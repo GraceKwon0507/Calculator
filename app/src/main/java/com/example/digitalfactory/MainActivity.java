@@ -5,7 +5,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 
 import net.objecthunter.exp4j.Expression;
@@ -26,7 +25,11 @@ public class MainActivity extends AppCompatActivity {
     // If true, do not allow to add another DOT
     private boolean lastDot;
     // Factorial
-    Operator factorial;
+    private Operator factorial;
+    // Check if equal button has been pressed or not
+    private boolean equalPressed = false;
+    // Used when text is modified
+    private String modifyText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,29 +48,51 @@ public class MainActivity extends AppCompatActivity {
      * Find and set OnClickListener to numeric buttons.
      */
     private void setNumericOnClickListener() {
-        // Create a common OnClickListener
-        View.OnClickListener listener = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Just append/set the text of clicked button
-                Button button = (Button) v;
-                if (stateError) {
-                    // If current state is Error, replace the error message
-                    txtInput.setText(button.getText());
-                    stateError = false;
-                } else {
-                    // If not, already there is a valid expression so append to it
-                    txtInput.append(button.getText());
-                }
-                // Set the flag
-                lastNumeric = true;
+
+            // Create a common OnClickListener
+            View.OnClickListener listener = new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // Just append/set the text of clicked button
+                    Button button = (Button) v;
+                    if (stateError) {
+                        // If current state is Error, replace the error message
+                        txtInput.setText(button.getText());
+                        stateError = false;
+                    } else {
+                        // If equal has not been pressed yet
+                        if (equalPressed == false) {
+                            // If not, already there is a valid expression so append to it
+                            txtInput.append(button.getText());
+                        }
+                        // If a calculation was already done
+                        else{
+                            // If a number is entered
+                            // Reset the textviews (both input and output) and start a new calculation
+                            if(lastNumeric){
+                                txtInput.setText(null);
+                                txtOutput.setText(null);
+                                txtInput.append(button.getText());
+                            }
+                            // If an operator is entered
+                            // Continue the calculation
+                            else {
+                                modifyText = txtInput.getText().toString();
+                                modifyText += button.getText();
+                                txtInput.setText(modifyText);
+                            }
+                        }
+                    }
+                    // Set the flag
+                    lastNumeric = true;
+                };
+            };
+
+            // Assign the listener to all the numeric buttons
+            for (int id : numericButtons) {
+                findViewById(id).setOnClickListener(listener);
             }
-        };
-        // Assign the listener to all the numeric buttons
-        for (int id : numericButtons) {
-            findViewById(id).setOnClickListener(listener);
         }
-    }
 
     /**
      * Find and set OnClickListener to operator buttons, equal button and decimal point button.
@@ -77,13 +102,20 @@ public class MainActivity extends AppCompatActivity {
         final View.OnClickListener listener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Button button = (Button) v;
+
                 // If the current state is Error do not append the operator
                 // If the last input is number only, append the operator
                 if (lastNumeric && !stateError) {
-                    Button button = (Button) v;
                     txtInput.append(button.getText());
                     lastNumeric = false;
                     lastDot = false;    // Reset the DOT flag
+                }
+                else if (!lastNumeric) {
+                    modifyText = txtInput.getText().toString();
+                    modifyText = txtInput.getText().toString().substring(0, modifyText.length() - 1);
+                    modifyText += button.getText();
+                    txtInput.setText(modifyText);
                 }
             }
         };
@@ -158,43 +190,53 @@ public class MainActivity extends AppCompatActivity {
      * Logic to calculate the solution.
      */
     private void onEqual() {
-        // If the current state is error, nothing to do.
-        // If the last input is a number only, solution can be found.
-        // Exclude factorial
-        if (lastNumeric && !stateError && !txtInput.toString().contains("!")) {
-            // Read the expression
-            String txt = txtInput.getText().toString();
-            // Create an Expression (A class from exp4j library)
-            Expression expression = new ExpressionBuilder(txt).build();
-            try {
-                // Calculate the result and display
-                double result = expression.evaluate();
-                txtOutput.setText(Double.toString(result));
-                lastDot = true; // Result contains a dot
-            } catch (ArithmeticException ex) {
-                // Display an error message
-                txtOutput.setText("Error");
-                stateError = true;
-                lastNumeric = false;
+        equalPressed = false;
+        // Check if the equal button is pressed
+        // If it was pressed, calculate the equation
+        if(equalPressed == false){
+            // If the current state is error, nothing to do.
+            // If the last input is a number only, solution can be found.
+            // Exclude factorial
+            if (lastNumeric && !stateError && !txtInput.toString().contains("!")) {
+                // Read the expression
+                String txt = txtInput.getText().toString();
+                // Create an Expression (A class from exp4j library)
+                Expression expression = new ExpressionBuilder(txt).build();
+                try {
+                    // Calculate the result and display
+                    double result = expression.evaluate();
+                    txtOutput.setText(Double.toString(result));
+                    lastDot = true; // Result contains a dot
+                } catch (ArithmeticException ex) {
+                    // Display an error message
+                    txtOutput.setText("Error");
+                    stateError = true;
+                    lastNumeric = false;
+                }
             }
-        }
-        else if (!lastNumeric && txtInput.getText().toString().contains("!")){
-            // Read the expression
-            String txt = txtInput.getText().toString();
-            try {
-                // Calculate the result and display
-                double result = new ExpressionBuilder(txt)
-                        .operator(factorial)
-                        .build()
-                        .evaluate();
-                txtOutput.setText(Double.toString(result));
-                lastDot = true; // Result contains a dot
-            } catch (ArithmeticException ex) {
-                // Display an error message
-                txtOutput.setText("Error");
-                stateError = true;
-                lastNumeric = false;
+            // If factorial button is pressed
+            // Do the equation
+            else if (!lastNumeric && txtInput.getText().toString().contains("!")){
+                // Read the expression
+                String txt = txtInput.getText().toString();
+                try {
+                    // Calculate the result and display
+                    double result = new ExpressionBuilder(txt)
+                            .operator(factorial)
+                            .build()
+                            .evaluate();
+                    txtOutput.setText(Double.toString(result));
+                    lastDot = true; // Result contains a dot
+                } catch (ArithmeticException ex) {
+                    // Display an error message
+                    txtOutput.setText("Error");
+                    stateError = true;
+                    lastNumeric = false;
+                }
             }
+            // After the calculation is complete, but the user wants to do another equation
+            // clear the textviews
+            equalPressed = true;
         }
     }
 
