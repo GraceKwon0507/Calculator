@@ -9,3 +9,6 @@ Feautures:
 - Power of (^)
 - Factorial (!)
 - Modulo (%)
+- Operator changes when a different operator is entered
+- Equation resets if a number is pressed after the calculation is executed
+  - If an operator is pressed after the calculation is executed, it appends the current calucation
